@@ -6,11 +6,15 @@
 #include <stdexcept>
 #include <vector>
 
+#include <ethash/keccak.h>
 #include <proc-evm/proc-evm.h>
 
 intx::uint256 Transaction::getHash() const {
-  // TODO: implement
-  return intx::uint256();
+  // Hash tx fields
+  std::string txStr = toString();
+  uint8_t* txData = (uint8_t*)txStr.c_str();
+  intx::uint256 txHash = intx::be::load<intx::uint256>(ethash_keccak256(txData, txStr.size()));
+  return txHash;
 }
 
 std::string Transaction::toString() const {

@@ -43,4 +43,4 @@ $(BUILD_DIR)/%.cpp.o: $(SRC_DIR)/%.cpp
 TEST_DIR := ./test
 
 run-fraktal-vm-test:
-	${BIN_DIR}/fraktal-vm run --stateSnapshot ${TEST_DIR}/snapshot.json --txPoolSnapshot ${TEST_DIR}/transactions.txt
+	${BIN_DIR}/fraktal-vm run --stateSnapshot ${TEST_DIR}/snapshot.json --txPoolSnapshot ${TEST_DIR}/transactions.csv

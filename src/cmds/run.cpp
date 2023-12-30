@@ -4,6 +4,11 @@
 #include <iostream>
 #include <memory>
 #include <thread>
+#include <signal.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <functional>
 
 #include "../txpool/txpool_server.h"
 #include "../execution/evm_thread.h"
@@ -133,6 +138,11 @@ std::unique_ptr<RunFraktalVMData> parseFraktalVMCmdlineArgs(int argc, char* argv
       });
 }
 
+std::function<void(int)> shutdown_handler;
+void signal_handler(int signal) {
+  shutdown_handler(signal);
+}
+
 void runFraktalVM(const RunFraktalVMData& data) {
   std::cout << "Running Fraktal VM server on " << data.serverAddress << ":" << data.serverPort << std::endl;
 
@@ -145,9 +155,9 @@ void runFraktalVM(const RunFraktalVMData& data) {
 
   // Start TX Pool Server
   std::cout << "Starting TX Pool Server" << std::endl;
-  std::thread txPoolServerThread([data]() {
-    TxPoolServer server(data.txPool, data.serverAddress, data.serverPort);
-    server.run();
+  TxPoolServer txPoolServer(data.txPool, data.serverAddress, data.serverPort, data.txPoolSnapshotFile);
+  std::thread txPoolServerThread([&]() {
+    txPoolServer.run();
   });
 
   // Start EVM Threads
@@ -156,8 +166,42 @@ void runFraktalVM(const RunFraktalVMData& data) {
     threadPool[i]->run();
   }
 
-  // Wait for Ctrl-C or SIGTERM
+  struct sigaction sigIntHandler;
+
+  sigIntHandler.sa_handler = signal_handler;
+  sigemptyset(&sigIntHandler.sa_mask);
+  sigIntHandler.sa_flags = 0;
+
+  shutdown_handler = [&](int signal) {
+    std::cout << "Received signal " << signal << std::endl;
+
+    // Stop EVM Threads
+    std::cout << "Stopping EVM Threads" << std::endl;
+    for(int i = 0; i < threadPool.size(); i++) {
+      threadPool[i]->stop();
+    }
+
+    // Stop TX Pool Server
+    std::cout << "Stopping TX Pool Server" << std::endl;
+    txPoolServer.stop();
+    txPoolServerThread.join();
+
+    std::cout << "Fraktal VM server stopped" << std::endl;
+
+    // Save State Snapshot & TX Pool Snapshot
+    std::cout << "Saving State Snapshot" << std::endl;
+    data.state->snapshot(data.stateSnapshotFile);
+    std::cout << "Saving TX Pool Snapshot" << std::endl;
+    data.txPool->snapshot(data.txPoolSnapshotFile);
+
+    exit(0);
+  };
+
+  sigaction(SIGINT, &sigIntHandler, NULL);
+
   std::cout << "Press Ctrl-C to exit" << std::endl;
+  pause();
+
   while(true) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
@@ -171,6 +215,7 @@ void runFraktalVM(const RunFraktalVMData& data) {
   // Stop TX Pool Server
   std::cout << "Stopping TX Pool Server" << std::endl;
   txPoolServerThread.join();
+  data.txPool->snapshot(data.txPoolSnapshotFile);
 
   std::cout << "Fraktal VM server stopped" << std::endl;
 
