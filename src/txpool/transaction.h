@@ -23,6 +23,14 @@ public:
   intx::uint256 getHash() const;  // TODO: should this return a different type?
   std::string toString() const;
   void fromString(const std::string&);
+
+  address getFrom() const { return from; }
+  address getTo() const { return to; }
+  uint256 getValue() const { return value; }
+  bytes getInput() const { return input; }
+  bytes getCode() const { return code; }
+
+  std::shared_ptr<TxContext> asTxContext() const; // TODO: Local declaration of TxContext
 private:
   address from;
   address to;

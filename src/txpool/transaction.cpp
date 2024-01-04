@@ -48,3 +48,8 @@ void Transaction::fromString(const std::string& txStr) {
   input = parseBytecode(tokens[3]);
   code = parseBytecode(tokens[4]);
 }
+
+std::shared_ptr<TxContext> Transaction::asTxContext() const {
+  std::shared_ptr<TxContext> txContext = std::make_shared<TxContext>(from, 0); // TODO: Use routine caller instead of from
+  return txContext;
+}

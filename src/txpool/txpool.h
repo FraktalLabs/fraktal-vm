@@ -13,6 +13,7 @@ public:
     TxPool(const std::string& snapshotFile);
 
     void addTx(std::shared_ptr<Transaction> tx);
+    void removeTx(const uint256& txHash);
     std::shared_ptr<Transaction> getTx(const uint256& txHash);
     std::shared_ptr<Transaction> popTx();
 

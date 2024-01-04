@@ -13,11 +13,11 @@
 #include "../txpool/txpool_server.h"
 #include "../execution/evm_thread.h"
 
-#include <evm-state-db/state-db.h>
+#include <fraktal-state-db/state-db.h>
 
 struct RunFraktalVMData {
   std::string stateSnapshotFile;
-  std::shared_ptr<State> state;
+  std::shared_ptr<FraktalState> state;
 
   std::string txPoolSnapshotFile;
   std::shared_ptr<TxPool> txPool;
@@ -33,9 +33,9 @@ std::unique_ptr<RunFraktalVMData> parseFraktalVMCmdlineArgs(int argc, char* argv
   // Cmdline Args
   std::string stateSnapshotFile;
   std::string txPoolSnapshotFile;
-  int threadPoolMaxThreads;
-  int threadQueueMaxSize;
-  std::string serverAddress;
+  int threadPoolMaxThreads = 0;
+  int threadQueueMaxSize = 0;
+  std::string serverAddress = "";
   int serverPort = 0;
 
   const std::string helpText = "Usage: " + std::string(argv[0]) + " run [options]\n"
@@ -129,7 +129,7 @@ std::unique_ptr<RunFraktalVMData> parseFraktalVMCmdlineArgs(int argc, char* argv
     serverPort = 8545;
   }
 
-  auto state = std::make_shared<State>(stateSnapshotFile);
+  auto state = std::make_shared<FraktalState>(stateSnapshotFile);
   auto txPool = std::make_shared<TxPool>(txPoolSnapshotFile);
 
   return std::make_unique<RunFraktalVMData>(RunFraktalVMData{

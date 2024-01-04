@@ -23,12 +23,20 @@ void TxPool::addTx(std::shared_ptr<Transaction> tx) {
   txQueue.push(tx->getHash());
 }
 
+void TxPool::removeTx(const uint256& txHash) {
+  txMap.erase(txHash);
+}
+
 std::shared_ptr<Transaction> TxPool::getTx(const uint256& txHash) {
   return txMap[txHash];
 }
 
 std::shared_ptr<Transaction> TxPool::popTx() {
   txQueueMutex.lock();
+  if (txQueue.empty()) {
+    txQueueMutex.unlock();
+    return nullptr;
+  }
   uint256 txHash = txQueue.front();
   txQueue.pop();
   txQueueMutex.unlock();
