@@ -12,6 +12,7 @@
 
 #include "../txpool/txpool_server.h"
 #include "../execution/evm_thread.h"
+#include "../vm/extension_opcodes.h"
 
 #include <fraktal-state-db/state-db.h>
 
@@ -144,6 +145,9 @@ void signal_handler(int signal) {
 }
 
 void runFraktalVM(const RunFraktalVMData& data) {
+  std::cout << "Loading Extension Opcodes" << std::endl;
+  loadExtensionOpcodes();
+
   std::cout << "Running Fraktal VM server on " << data.serverAddress << ":" << data.serverPort << std::endl;
 
   // Create EVM Thread Pool
