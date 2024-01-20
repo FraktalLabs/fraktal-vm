@@ -1,6 +1,6 @@
 #pragma once
 
-#include <proc-evm/proc-evm.h>
+#include "coroutine_context.h"
 
 #include <iostream>
 
@@ -46,7 +46,50 @@ ExecStatus ClogMemoryStringOperation::execute(CallContext& context) {
   return CONTINUE;
 }
 
+class YieldOperation : public Operation {
+public:
+  ExecStatus execute(CallContext&) override;
+};
+
+class SpawnOperation : public Operation {
+public:
+  ExecStatus execute(CallContext&) override;
+};
+
+ExecStatus YieldOperation::execute(CallContext& context) {
+  std::shared_ptr<ContractCoroutine> coroutine =
+      std::make_shared<ContractCoroutine>(context.getPc() + 1, *context.getStack());
+
+  static_cast<FraktalVMContext&>(context).addCoroutine(coroutine);
+
+  return STOPEXEC;
+}
+
+ExecStatus SpawnOperation::execute(CallContext& context) {
+  uint256 pos = context.getStack()->pop();
+  // TODO: Check valid jump destination & ...
+  
+  std::shared_ptr<ContractCoroutine> coroutine =
+      std::make_shared<ContractCoroutine>(static_cast<uint64_t>(pos), *context.getStack());
+
+  static_cast<FraktalVMContext&>(context).addCoroutine(coroutine);
+
+  return CONTINUE;
+}
+
 void loadExtensionOpcodes() {
+  // Contract Coroutines + Channels : 0x00 - 0x0f
+  extensionJumpTable[0x00] = new YieldOperation();
+  extensionOpcodeStrings[0x00] = "YIELD";
+
+  extensionJumpTable[0x01] = new SpawnOperation();
+  extensionOpcodeStrings[0x01] = "SPAWN";
+
+  // FraktalVM Coroutines + Channels : 0x10 - 0x1f
+  
+  // Mutex Operations : 0x20 - 0x2f
+
+  // Clog Operations : 0xc0 - 0xc9
   extensionJumpTable[0xc0] = new ClogStackOperation();
   extensionOpcodeStrings[0xc0] = "CLOGSTACK";
 

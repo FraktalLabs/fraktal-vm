@@ -5,7 +5,8 @@
 #include <memory>
 
 #include <evm-cpp-utils/types.h>
-#include <proc-evm/proc-evm.h>
+
+#include "../vm/coroutine_context.h"
 
 void EVMThread::runInternal() {
   running = true;
@@ -36,9 +37,10 @@ void EVMThread::runInternal() {
       std::shared_ptr<BlockContext> blockContext = std::make_shared<BlockContext>();
 
       // TODO: Use caller of routine
-      std::shared_ptr<CallContext> callContext =
-        std::make_shared<CallContext>(contract, tx->getValue(), tx->getInput(), tx->getFrom(),
-                                      state, blockContext, tx->asTxContext());
+      // TODO: Inner calls wont be able to do this in current setup ( overwrite in jumptable )
+      std::shared_ptr<FraktalVMContext> callContext =
+        std::make_shared<FraktalVMContext>(CallContext(contract, tx->getValue(), tx->getInput(),
+                                           tx->getFrom(), state, blockContext, tx->asTxContext()));
 
       intx::uint256 txHash = tx->getHash();
       std::cout << "Running tx: " << intx::to_string(txHash, 16) << "  on thread: " << std::this_thread::get_id() << std::endl;
