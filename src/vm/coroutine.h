@@ -10,6 +10,8 @@ public:
 
     uint64_t getPc() const { return pc; }
     Stack getStack() const { return stack; }
+
+    void pushStack(uint256 value) { stack.push(value); }
 private:
     uint64_t pc;
     Stack stack;

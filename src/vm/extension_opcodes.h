@@ -77,6 +77,48 @@ ExecStatus SpawnOperation::execute(CallContext& context) {
   return CONTINUE;
 }
 
+class ChannelCreateOperation : public Operation {
+public:
+  ExecStatus execute(CallContext&) override;
+};
+
+class ChannelSendOperation : public Operation {
+public:
+  ExecStatus execute(CallContext&) override;
+};
+
+class ChannelReceiveOperation : public Operation {
+public:
+  ExecStatus execute(CallContext&) override;
+};
+
+ExecStatus ChannelCreateOperation::execute(CallContext& context) {
+  uint256& capacity = context.getStack()->peek();
+  std::shared_ptr<ContractChannel> channel =
+    std::make_shared<ContractChannel>(static_cast<uint64_t>(capacity));
+
+  uint64_t channelIdx = static_cast<FraktalVMContext&>(context).addChannel(channel);
+  capacity = channelIdx;
+
+  return CONTINUE;
+}
+
+ExecStatus ChannelSendOperation::execute(CallContext& context) {
+  uint256 channelIdx = context.getStack()->pop();
+  uint256 value = context.getStack()->pop();
+  auto channel = static_cast<FraktalVMContext&>(context).getChannel(static_cast<uint64_t>(channelIdx));
+  // TODO: existence checks
+
+  return channel->send(context, value);
+}
+
+ExecStatus ChannelReceiveOperation::execute(CallContext& context) {
+  uint256 channelIdx = context.getStack()->pop();
+  auto channel = static_cast<FraktalVMContext&>(context).getChannel(static_cast<uint64_t>(channelIdx));
+
+  return channel->receive(context);
+}
+
 void loadExtensionOpcodes() {
   // Contract Coroutines + Channels : 0x00 - 0x0f
   extensionJumpTable[0x00] = new YieldOperation();
@@ -84,6 +126,15 @@ void loadExtensionOpcodes() {
 
   extensionJumpTable[0x01] = new SpawnOperation();
   extensionOpcodeStrings[0x01] = "SPAWN";
+
+  extensionJumpTable[0x02] = new ChannelCreateOperation();
+  extensionOpcodeStrings[0x02] = "CHANCREATE";
+
+  extensionJumpTable[0x03] = new ChannelSendOperation();
+  extensionOpcodeStrings[0x03] = "CHANSEND";
+
+  extensionJumpTable[0x04] = new ChannelReceiveOperation();
+  extensionOpcodeStrings[0x04] = "CHANRECV";
 
   // FraktalVM Coroutines + Channels : 0x10 - 0x1f
   
@@ -94,8 +145,8 @@ void loadExtensionOpcodes() {
   extensionOpcodeStrings[0xc0] = "CLOGSTACK";
 
   extensionJumpTable[0xc1] = new ClogMemoryOperation();
-  extensionOpcodeStrings[0xc1] = "CLOGMEMORY";
+  extensionOpcodeStrings[0xc1] = "CLOGMEM";
 
   extensionJumpTable[0xc2] = new ClogMemoryStringOperation();
-  extensionOpcodeStrings[0xc2] = "CLOGMEMORYSTRING";
+  extensionOpcodeStrings[0xc2] = "CLOGMEMSTR";
 };
