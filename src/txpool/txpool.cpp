@@ -1,7 +1,6 @@
 #include "txpool.h"
 
 #include <fstream>
-#include <iostream>
 
 TxPool::TxPool(const std::string& snapshotFile) {
   std::cout << "Loading txpool from " << snapshotFile << std::endl;
@@ -9,7 +8,6 @@ TxPool::TxPool(const std::string& snapshotFile) {
   if (snapshot.is_open()) {
     std::string line;
     while (getline(snapshot, line)) {
-      std::cout << "Loading tx: " << line << std::endl;
       std::shared_ptr<Transaction> tx = std::make_shared<Transaction>(line);
       txMap[tx->getHash()] = tx;
       txQueue.push(tx->getHash());

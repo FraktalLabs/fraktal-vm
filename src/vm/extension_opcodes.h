@@ -1,8 +1,10 @@
 #pragma once
 
+#include <iostream>
+
 #include "coroutine_context.h"
 
-#include <iostream>
+#include <fraktal-state-db/state-db.h>
 
 //TODO: Opcodes & Operations split
 
@@ -30,8 +32,8 @@ ExecStatus ClogStackOperation::execute(CallContext& context) {
 
 ExecStatus ClogMemoryOperation::execute(CallContext& context) {
   uint256 pos = context.getStack()->pop();
-  uint32_t value = context.getMemory()->load32(static_cast<uint64_t>(pos));
-  std::cout << "CLOG MEMORY: " << std::hex << value << std::endl;
+  uint256 value = context.getMemory()->load32(static_cast<uint64_t>(pos));
+  std::cout << "CLOG MEMORY: " << intx::to_string(value, 16) << std::endl;
   return CONTINUE;
 }
 
@@ -39,9 +41,9 @@ ExecStatus ClogMemoryStringOperation::execute(CallContext& context) {
   uint256 offset = context.getStack()->pop();
   uint64_t offset64 = static_cast<uint64_t>(offset);
 
-  uint32_t length = context.getMemory()->load32(offset64);
+  intx::uint256 length = context.getMemory()->load32(offset64);
   uint8_t* valuePtr = context.getMemory()->getPointer(offset64 + 32);
-  std::string value = std::string(reinterpret_cast<char*>(valuePtr), length);
+  std::string value = std::string(reinterpret_cast<char*>(valuePtr), static_cast<uint64_t>(length));
   std::cout << "CLOG MEMORY: " << value << std::endl;
   return CONTINUE;
 }
@@ -119,6 +121,58 @@ ExecStatus ChannelReceiveOperation::execute(CallContext& context) {
   return channel->receive(context);
 }
 
+class MutexCreateOperation : public Operation {
+public:
+  ExecStatus execute(CallContext&) override;
+};
+
+class MutexLockOperation : public Operation {
+public:
+  ExecStatus execute(CallContext&) override;
+};
+
+class MutexUnlockOperation : public Operation {
+public:
+  ExecStatus execute(CallContext&) override;
+};
+
+ExecStatus MutexCreateOperation::execute(CallContext& context) {
+  uint256 mutexIdx = context.getStack()->pop();
+
+  // TODO: Store in storage slot w/ nonce as value?
+  std::string contract = context.getContract()->getAddressString();
+  std::shared_ptr<FraktalAccount> account = 
+      std::static_pointer_cast<FraktalAccount>(context.getState()->get(contract));
+
+  account->createMutex(mutexIdx);
+
+  return CONTINUE;
+}
+
+ExecStatus MutexLockOperation::execute(CallContext& context) {
+  uint256 mutexIdx = context.getStack()->pop();
+
+  std::string contract = context.getContract()->getAddressString();
+  std::shared_ptr<FraktalAccount> account = 
+      std::static_pointer_cast<FraktalAccount>(context.getState()->get(contract));
+
+  account->lockMutex(static_cast<uint64_t>(mutexIdx));
+
+  return CONTINUE;
+}
+
+ExecStatus MutexUnlockOperation::execute(CallContext& context) {
+  uint256 mutexIdx = context.getStack()->pop();
+
+  std::string contract = context.getContract()->getAddressString();
+  std::shared_ptr<FraktalAccount> account = 
+      std::static_pointer_cast<FraktalAccount>(context.getState()->get(contract));
+
+  account->unlockMutex(static_cast<uint64_t>(mutexIdx));
+
+  return CONTINUE;
+}
+
 void loadExtensionOpcodes() {
   // Contract Coroutines + Channels : 0x00 - 0x0f
   extensionJumpTable[0x00] = new YieldOperation();
@@ -139,6 +193,15 @@ void loadExtensionOpcodes() {
   // FraktalVM Coroutines + Channels : 0x10 - 0x1f
   
   // Mutex Operations : 0x20 - 0x2f
+  extensionJumpTable[0x20] = new MutexCreateOperation();
+  extensionOpcodeStrings[0x20] = "MUTEXCREATE";
+
+  extensionJumpTable[0x21] = new MutexLockOperation();
+  extensionOpcodeStrings[0x21] = "MUTEXLOCK";
+
+  extensionJumpTable[0x22] = new MutexUnlockOperation();
+  extensionOpcodeStrings[0x22] = "MUTEXUNLOCK";
+  // TODO: MutexDestroy?
 
   // Clog Operations : 0xc0 - 0xc9
   extensionJumpTable[0xc0] = new ClogStackOperation();
